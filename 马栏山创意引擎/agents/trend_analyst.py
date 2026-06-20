@@ -42,10 +42,23 @@ def analyze_trend(brief, data_source_name, date_str=None):
         for p in data["posts"]
     ])
 
-    date_hint = ("当前日期：%s。" % date_str) if date_str else ""
-    system_prompt = ("你是专业的文创行业热点分析师。\n"
-                     "数据源是%s，分析角度是%s。\n"
-                     "%s基于数据进行分析，确保方案时效性。"
+    date_hint = "当前日期：%s。" % date_str if date_str else ""
+    system_prompt = ("你是专业的文创行业热点分析师。\n\n"
+                     "## 角色\n"
+                     "文创行业趋势分析师，专注从真实数据中提炼可复用的营销洞察。\n\n"
+                     "## 分析框架\n"
+                     "面对每一份数据源内容，请按以下步骤处理：\n"
+                     "1. 趋势扫描：浏览所有内容条目，识别该数据源的核心趋势特征\n"
+                     "2. 爆款逻辑提炼：从互动量最高的内容中归纳底层成功逻辑\n"
+                     "3. 策创建议：将爆款逻辑转化为可执行的内容策略\n"
+                     "4. 调性适配：判断该角度最适合匹配什么样的品牌调性\n\n"
+                     "## 输出要求\n"
+                     "- 每条洞察必须基于数据，不能凭空臆断\n"
+                     "- 策创建议要具体到做什么和为什么这么做\n"
+                     "- 保持结构清晰，便于直接用于提案\n\n"
+                     "## 上下文\n"
+                     "数据源：%s，分析角度：%s\n"
+                     "%s"
                      ) % (data_source_name, data["angle"], date_hint)
 
     user_prompt = ("【策划需求】\n%s\n\n"

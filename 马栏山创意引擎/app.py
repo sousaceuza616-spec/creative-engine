@@ -136,6 +136,35 @@ with st.container():
     with cta_cols[1]:
         run_button = st.button('开始策划', type='primary', use_container_width=True)
 
+
+def export_as_markdown(result):
+    lines = []
+    lines.append("# 策创方案")
+    lines.append("")
+    lines.append("**策划需求：** " + result.get("brief", ""))
+    lines.append("**品牌调性：** " + result.get("brand_tone", "自动推导"))
+    lines.append("")
+    analyses = result.get("all_analyses", [])
+    if analyses:
+        lines.append("## 市场分析")
+        for a in analyses:
+            src = a.get("source", "")
+            ang = a.get("angle", "")
+            lines.append("### " + src + " (" + ang + ")")
+            lines.append(a.get("analysis", ""))
+        lines.append("")
+    headlines = result.get("all_headlines", [])
+    if headlines:
+        lines.append("## 创意标题")
+        for h in headlines:
+            hl = h.get("headline", "")
+            hang = h.get("angle", "")
+            lines.append("- " + hl + " (" + hang + ")")
+        lines.append("")
+    lines.append("## 方案大纲")
+    lines.append(result.get("outline", ""))
+    return chr(10).join(lines)
+
 if run_button and brief:
     if not brand_tone.strip():
         if '茶颜' in brief or '国潮' in brief or '传统' in brief:
@@ -160,7 +189,7 @@ if run_button and brief:
     st.markdown('### Step 1 : 热点分析')
     col_a, col_b, col_c = st.columns(3)
     with col_a:
-        with st.expander('情感向 - 小红书分析', expanded=False):
+        with st.expander('情感向 - 小红书分析', expanded=True):
             detail = result["steps"]["analysis"]["detail"].get("小红书", {})
             analysis = detail.get("analysis", "分析中...")
             count = detail.get("posts_count", 0)
@@ -191,7 +220,7 @@ if run_button and brief:
         with hl_cols[i]:
             st.markdown(f"**{angle}标题**")
             for h in headlines:
-                st.markdown(f"- {h}")
+                st.markdown(f'<div style="background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;padding:0.6rem 0.8rem;margin:0.3rem 0;font-size:0.95rem;color:#2d3748;line-height:1.5">{h}</div>', unsafe_allow_html=True)
 
     st.markdown('### Step 3 : 主编语义级审核')
     rd = result.get("rejection_demo")
@@ -217,7 +246,17 @@ if run_button and brief:
     st.markdown('### Step 4 : 策创方案大纲')
     outline = result.get("outline", "生成中...")
     st.markdown(render_outline(outline), unsafe_allow_html=True)
-
+    col_dl1, col_dl2 = st.columns([1, 1])
+    with col_dl1:
+        if st.button("📥 导出方案 (Markdown)", type="secondary", use_container_width=True):
+            md = export_as_markdown(result)
+            st.download_button(
+                label="下载 .md 文件",
+                data=md.encode("utf-8"),
+                file_name="策创方案.md",
+                mime="text/markdown",
+                key="download_btn"
+            )
     if st.button('🔄 重新策创', type='secondary'):
         st.rerun()
 
@@ -225,3 +264,4 @@ if run_button and brief:
 
 elif run_button and not brief:
     st.warning('请输入策划需求后再开始。')
+    

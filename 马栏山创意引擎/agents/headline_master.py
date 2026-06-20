@@ -28,7 +28,19 @@ def generate_headlines(brief, angle, date_str=None, count=2):
         response = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
             messages=[
-                {"role": "system", "content": "你是创意标题大师，擅长为品牌策划生成有传播力的标题。" + date_hint},
+                {"role": "system", "content": (
+                    "你是创意标题大师。\n\n"
+                    "## 角色\n"
+                    "品牌策划领域的标题专家，擅长为推广需求创作有传播力的各类风格标题。\n\n"
+                    "## 创作原则\n"
+                    "1. 每个标题必须精准回应策划需求的核心卖点\n"
+                    "2. 优先选择当下热门的标题风格（情感共鸣型/悬念好奇型/价值直给型/文化底蕴型）\n"
+                    "3. 标题长度控制在 15-25 字之间\n"
+                    "4. 避免陈词滥调和过度夸张的表达\n"
+                    "5. 如果可能，融入具体数字或地域元素增强可信度\n\n"
+                    "## 输出格式\n"
+                    "每行一个标题，不加序号，不加引号。" + ("\n" + date_hint if date_hint else "")
+                )},
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.8,
@@ -70,7 +82,18 @@ def refine_headline(feedback, original_headline, brief, angle, date_str=None):
         response = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
             messages=[
-                {"role": "system", "content": "你是创意标题大师，擅长根据反馈优化标题。" + date_hint},
+                {"role": "system", "content": (
+                    "你是创意标题大师。\n\n"
+                    "## 角色\n"
+                    "品牌策划领域的标题优化专家，擅长根据审核反馈精准修改标题。\n\n"
+                    "## 优化原则\n"
+                    "1. 仔细阅读主编的驳回理由，理解具体问题出在哪里\n"
+                    "2. 保留原标题的优点（如果主编未否定），仅调整有问题的部分\n"
+                    "3. 确保新标题完全符合品牌调性要求\n"
+                    "4. 不要为了修改而修改——如果原标题实际上已经很好，小幅调整即可\n\n"
+                    "## 输出格式\n"
+                    "只输出优化后的标题本身，不要任何解释或前缀。"
+                )},
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.7,

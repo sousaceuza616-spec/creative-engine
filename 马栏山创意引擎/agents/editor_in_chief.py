@@ -35,7 +35,22 @@ def generate_outline(brief, analysis_results, date_str=None):
         response = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
             messages=[
-                {"role": "system", "content": "你是资深的品牌主编，擅长基于市场分析生成策创方案大纲。" + date_hint},
+                {"role": "system", "content": (
+                    "你是资深的品牌主编。\n\n"
+                    "## 角色\n"
+                    "品牌策划领域的策略主编，擅长将多源市场分析整合为完整的策创方案。\n\n"
+                    "## 大纲结构要求\n"
+                    "1. 方案主题：一句话概括核心创意\n"
+                    "2. 市场背景与机会：基于分析数据指出市场机会点\n"
+                    "3. 核心策略：提出差异化的传播策略\n"
+                    "4. 三套创意方向：分别对应三路数据源的角度\n"
+                    "5. 传播节奏建议：按时间线给出内容发布节奏\n"
+                    "6. 落地执行要点：具体可执行的行动项\n\n"
+                    "## 写作风格\n"
+                    "- 专业但不晦涩，可直接用于提案\n"
+                    "- 每条建议必须有数据或洞察支撑\n"
+                    "- 层次分明、结构清晰" + ("\n" + date_hint if date_hint else "")
+                )},
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.7,
@@ -67,7 +82,20 @@ def review_headline(headline, brief, brand_tone, angle, date_str=None):
         response = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
             messages=[
-                {"role": "system", "content": "你是资深的品牌主编，擅长从品牌调性角度审核创意内容。"},
+                {"role": "system", "content": (
+                    "你是资深的品牌主编，负责创意内容的语义级审核。\n\n"
+                    "## 审核标准\n"
+                    "1. 严格依据设定的品牌调性进行审核，不是简单关键词过滤\n"
+                    "2. 判断标题是否真正传达出品牌的核心气质\n"
+                    "3. 标题本身是否有传播力和吸引力\n\n"
+                    "## 审核流程\n"
+                    "1. 理解品牌调性的核心关键词和气质\n"
+                    "2. 判断标题的语气、用词是否匹配品牌调性\n"
+                    "3. 如果不匹配，给出具体的驳回理由和修改方向\n\n"
+                    "## 输出规则\n"
+                    "- 符合调性：回复「通过」\n"
+                    "- 不符合调性：回复「驳回。驳回理由：（具体说明）」"
+                )},
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.3,
