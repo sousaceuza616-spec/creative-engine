@@ -2,104 +2,94 @@
 热点分析师 Agent
 基于预置数据集分析竞品趋势，提炼爆款逻辑
 """
-import json
-import os
+from __future__ import annotations
+
 import logging
-from config import get_client, DEEPSEEK_MODEL
+from typing import Any
+
+from config import get_client, DEEPSEEK_MODEL, api_call_with_retry
+from data.loader import load_data
+from prompts.trend_analyst import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 
 logger = logging.getLogger(__name__)
 client = get_client()
 
 
-def _load_data(data_source_name):
-    """加载预置数据集"""
-    data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-    file_map = {
-        "小红书": os.path.join(data_dir, "xiaohongshu.json"),
-        "B站": os.path.join(data_dir, "bilibili.json"),
-        "抖音": os.path.join(data_dir, "douyin.json"),
-    }
-    fp = file_map.get(data_source_name)
-    if not fp or not os.path.exists(fp):
-        return None
-    with open(fp, "r", encoding="utf-8-sig") as f:
-        return json.load(f)
+def analyze_trend(
+    brief: str,
+    data_source_name: str,
+    date_str: str | None = None,
+) -> dict[str, Any]:
+    """基于指定数据源分析趋势
 
+    Args:
+        brief: 策划需求文本
+        data_source_name: 数据源名称（小红书 / B站 / 抖音）
+        date_str: 当前日期字符串（由 orchestrator 传入，避免重复工具调用）
 
-def analyze_trend(brief, data_source_name, date_str=None):
-    """基于指定数据源分析趋势（date_str 由 orchestrator 传入，避免重复工具调用）"""
-    data = _load_data(data_source_name)
+    Returns:
+        dict: 包含 source, angle, analysis, posts_count, fallback 字段
+    """
+    data = load_data(data_source_name)
     if not data:
-        return {"source": data_source_name, "error": "未找到" + data_source_name + "数据"}
+        return {
+            "source": data_source_name,
+            "error": f"未找到{data_source_name}数据",
+            "fallback": True,
+        }
 
+    posts = data.get("posts", [])
     posts_summary = "\n".join([
-        "- 《%s》| 互动量:%s | 主题:%s | 洞察:%s" % (
-            p["title"],
-            p.get("likes", p.get("plays", "N/A")),
-            p["theme"],
-            p["key_insight"]
-        )
-        for p in data["posts"]
+        f"- 《{p['title']}》| 互动量:{p.get('likes', p.get('plays', 'N/A'))} | "
+        f"主题:{p['theme']} | 洞察:{p['key_insight']}"
+        for p in posts
     ])
 
-    date_hint = "当前日期：%s。" % date_str if date_str else ""
-    system_prompt = ("你是专业的文创行业热点分析师。\n\n"
-                     "## 角色\n"
-                     "文创行业趋势分析师，专注从真实数据中提炼可复用的营销洞察。\n\n"
-                     "## 分析框架\n"
-                     "面对每一份数据源内容，请按以下步骤处理：\n"
-                     "1. 趋势扫描：浏览所有内容条目，识别该数据源的核心趋势特征\n"
-                     "2. 爆款逻辑提炼：从互动量最高的内容中归纳底层成功逻辑\n"
-                     "3. 策创建议：将爆款逻辑转化为可执行的内容策略\n"
-                     "4. 调性适配：判断该角度最适合匹配什么样的品牌调性\n\n"
-                     "## 输出要求\n"
-                     "- 每条洞察必须基于数据，不能凭空臆断\n"
-                     "- 策创建议要具体到做什么和为什么这么做\n"
-                     "- 保持结构清晰，便于直接用于提案\n\n"
-                     "## 上下文\n"
-                     "数据源：%s，分析角度：%s\n"
-                     "%s"
-                     ) % (data_source_name, data["angle"], date_hint)
+    date_hint = f"当前日期：{date_str}。" if date_str else ""
+    angle = data.get("angle", data_source_name)
 
-    user_prompt = ("【策划需求】\n%s\n\n"
-                   "【数据源】\n%s - %s\n\n"
-                   "【数据内容】\n%s\n\n"
-                   "【任务】\n"
-                   "基于以上数据源中的真实内容，请：\n"
-                   "1. 总结该数据源的核心趋势特征\n"
-                   "2. 提炼2-3个可借鉴的爆款逻辑\n"
-                   "3. 针对策划需求给出具体的策创建议\n"
-                   "4. 指出这个角度最适合什么样的品牌调性\n\n"
-                   "输出格式：\n"
-                   "## 数据源分析：%s\n"
-                   "### 核心趋势\n...\n"
-                   "### 爆款逻辑提炼\n...\n"
-                   "### 策创建议\n...\n"
-                   "### 适合的品牌调性\n..."
-                   ) % (brief, data_source_name, data["angle"], posts_summary, data_source_name)
+    system_prompt = SYSTEM_PROMPT.format(
+        data_source=data_source_name,
+        angle=angle,
+        date_hint=date_hint,
+    )
+
+    user_prompt = USER_PROMPT_TEMPLATE.format(
+        brief=brief,
+        data_source=data_source_name,
+        angle=angle,
+        posts_summary=posts_summary,
+    )
 
     try:
-        response = client.chat.completions.create(
-            model=DEEPSEEK_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.7,
-            max_tokens=1500
+        response = api_call_with_retry(
+            lambda: client.chat.completions.create(
+                model=DEEPSEEK_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.7,
+                max_tokens=1500,
+            )
         )
         analysis = response.choices[0].message.content
+        fallback = False
     except Exception as e:
         logger.exception("analyze_trend failed for source: %s", data_source_name)
-        fallback_insight = data["posts"][0]["key_insight"] if data.get("posts") else "无"
-        analysis = ("（API调用失败，使用本地预置数据兜底）\n\n"
-                    "数据源：%s\n数据量：%d条\n核心洞察：%s") % (
-            data_source_name, len(data.get("posts", [])),
-            fallback_insight)
+        fallback_insight = posts[0]["key_insight"] if posts else "无"
+        analysis = (
+            f"（API调用失败，使用本地预置数据兜底）\n\n"
+            f"数据源：{data_source_name}\n"
+            f"数据量：{len(posts)}条\n"
+            f"核心洞察：{fallback_insight}"
+        )
+        fallback = True
 
     return {
         "source": data_source_name,
-        "angle": data["angle"],
+        "angle": angle,
         "analysis": analysis,
-        "posts_count": len(data["posts"])
+        "posts_count": len(posts),
+        "fallback": fallback,
     }
