@@ -228,38 +228,6 @@ with st.container():
         run_button = st.button('开始策划', type='primary', use_container_width=True)
 
 
-# ────────────────────────────── Markdown 导出 ───────────────────────
-
-def export_as_markdown(result: dict[str, Any]) -> str:
-    """将策创结果导出为 Markdown 文本"""
-    lines: list[str] = []
-    lines.append("# 策创方案")
-    lines.append("")
-    lines.append(f"**策划需求：** {result.get('brief', '')}")
-    lines.append(f"**品牌调性：** {result.get('brand_tone', '自动推导')}")
-    lines.append("")
-    analyses = result.get("all_analyses", [])
-    if analyses:
-        lines.append("## 市场分析")
-        for a in analyses:
-            src = a.get("source", "")
-            ang = a.get("angle", "")
-            lines.append(f"### {src} ({ang})")
-            lines.append(a.get("analysis", ""))
-        lines.append("")
-    headlines = result.get("all_headlines", [])
-    if headlines:
-        lines.append("## 创意标题")
-        for h in headlines:
-            hl = h.get("headline", "")
-            hang = h.get("angle", "")
-            lines.append(f"- {hl} ({hang})")
-        lines.append("")
-    lines.append("## 方案大纲")
-    lines.append(result.get("outline", ""))
-    return "\n".join(lines)
-
-
 # ────────────────────────────── 运行流水线 ──────────────────────────
 
 if run_button and brief:
@@ -376,25 +344,7 @@ if run_button and brief:
     st.markdown('### Step 4 : 策创方案大纲')
     outline = result.get("outline", "生成中...")
     st.markdown(render_outline(outline), unsafe_allow_html=True)
-    # 用 session_state 持久化导出内容，避免按钮在 rerun 后消失
-    if "md_export" not in st.session_state:
-        st.session_state.md_export = None
-
-    col_dl1, col_dl2 = st.columns([1, 1])
-    with col_dl1:
-        if st.button("📥 导出方案 (Markdown)", type="secondary", use_container_width=True):
-            st.session_state.md_export = export_as_markdown(result)
-
-        if st.session_state.md_export:
-            st.download_button(
-                label="下载 .md 文件",
-                data=st.session_state.md_export.encode("utf-8"),
-                file_name="策创方案.md",
-                mime="text/markdown",
-                key="download_btn",
-            )
     if st.button('🔄 重新策创', type='secondary'):
-        st.session_state.md_export = None
         st.rerun()
 
     st.markdown('<div class="footer-note">马栏山创意引擎 V2.6</div>', unsafe_allow_html=True)
