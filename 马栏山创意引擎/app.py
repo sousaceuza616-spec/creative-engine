@@ -376,18 +376,25 @@ if run_button and brief:
     st.markdown('### Step 4 : 策创方案大纲')
     outline = result.get("outline", "生成中...")
     st.markdown(render_outline(outline), unsafe_allow_html=True)
+    # 用 session_state 持久化导出内容，避免按钮在 rerun 后消失
+    if "md_export" not in st.session_state:
+        st.session_state.md_export = None
+
     col_dl1, col_dl2 = st.columns([1, 1])
     with col_dl1:
         if st.button("📥 导出方案 (Markdown)", type="secondary", use_container_width=True):
-            md = export_as_markdown(result)
+            st.session_state.md_export = export_as_markdown(result)
+
+        if st.session_state.md_export:
             st.download_button(
                 label="下载 .md 文件",
-                data=md.encode("utf-8"),
+                data=st.session_state.md_export.encode("utf-8"),
                 file_name="策创方案.md",
                 mime="text/markdown",
                 key="download_btn",
             )
     if st.button('🔄 重新策创', type='secondary'):
+        st.session_state.md_export = None
         st.rerun()
 
     st.markdown('<div class="footer-note">马栏山创意引擎 V2.6</div>', unsafe_allow_html=True)

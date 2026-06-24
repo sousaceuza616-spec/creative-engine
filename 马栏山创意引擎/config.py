@@ -12,7 +12,7 @@ from openai import OpenAI
 logger = logging.getLogger(__name__)
 
 # DeepSeek API 配置
-DEEPSEEK_API_KEY = "sk-72f679dd47c447bc986afa3e096eacd5"
+DEEPSEEK_API_KEY = "sk-62d21290db494ca68b457740e1ca0001"
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 
